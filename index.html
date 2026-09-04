@@ -20,7 +20,7 @@ button{border:0;border-radius:10px;padding:11px 14px;font-weight:600;cursor:poin
 .badge{font-size:11px;padding:4px 7px;border-radius:999px;background:#fee2e2;color:#991b1b}.badge.optional{background:#e0f2fe;color:#075985}
 .actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.primary{background:#2563eb;color:white}.danger{background:#dc2626;color:white}.secondary{background:#e5e7eb}
 textarea,input[type=text],select{width:100%;padding:10px;border:1px solid #d1d5db;border-radius:9px;font:inherit}
-.small{font-size:12px;color:#6b7280}.hidden{display:none}.comment{margin-top:8px;font-size:13px;resize:vertical;background:#fafafa}.photo-row{display:flex;align-items:center;gap:10px;margin-top:8px;flex-wrap:wrap}.photo-btn{display:inline-block;background:#e5e7eb;padding:8px 10px;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer}.preview{display:block;margin-top:8px;max-width:180px;max-height:140px;border-radius:9px;border:1px solid #ddd;object-fit:cover}.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.small{font-size:12px;color:#6b7280}.hidden{display:none}.comment{margin-top:8px;font-size:13px;resize:vertical;background:#fafafa}.photo-row{display:flex;align-items:center;gap:10px;margin-top:8px;flex-wrap:wrap}.photo-btn{display:inline-block;background:#e5e7eb;padding:8px 10px;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer}.preview{display:block;margin-top:8px;max-width:180px;max-height:140px;border-radius:9px;border:1px solid #ddd;object-fit:cover}.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}.setup{max-width:560px;margin:35px auto}.setup h2{margin-top:0}.dept-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}.dept-btn{background:#e5e7eb;text-align:left}.dept-btn.selected{background:#2563eb;color:white}.setup-actions{display:flex;justify-content:flex-end;margin-top:16px}@media(max-width:650px){.dept-grid{grid-template-columns:1fr}}
 @media(max-width:650px){main{padding:12px}.row{grid-template-columns:1fr}.tabs button{flex:1}.card{padding:13px}}
 dialog{border:0;border-radius:16px;max-width:560px;width:92%;padding:0;box-shadow:0 20px 60px #0004}dialog::backdrop{background:#0007}
 .modal{padding:20px}.modal h2{margin-top:0}.modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:16px}
@@ -29,6 +29,38 @@ dialog{border:0;border-radius:16px;max-width:560px;width:92%;padding:0;box-shado
 <body>
 <header><h1>Shift Checklist</h1><p id="dateLine" style="font-size:14px;font-weight:600;color:#e5e7eb"></p></header>
 <main>
+
+<div id="setupScreen" class="setup card">
+  <h2>Start Shift</h2>
+  <p class="small">Enter your name, choose your department and shift, then open the checklist.</p>
+
+  <label><b>Operator name</b></label>
+  <input id="operatorInput" type="text" placeholder="Enter operator name" autocomplete="name" style="margin-top:7px">
+
+  <div id="departmentStep" class="hidden" style="margin-top:16px">
+    <b>Department</b>
+    <div class="dept-grid">
+      <button class="dept-btn" data-dept="Mixer" onclick="selectDepartment('Mixer')">Mixer</button>
+      <button class="dept-btn" data-dept="Palletizing & Unloading" onclick="selectDepartment('Palletizing & Unloading')">Palletizing & Unloading</button>
+      <button class="dept-btn" data-dept="SCW" onclick="selectDepartment('SCW')">SCW</button>
+      <button class="dept-btn" data-dept="Convex" onclick="selectDepartment('Convex')">Convex</button>
+    </div>
+  </div>
+
+  <div id="shiftStep" class="hidden" style="margin-top:16px">
+    <b>Shift</b>
+    <div class="dept-grid">
+      <button class="dept-btn" data-shift="Day" onclick="selectShift('Day')">☀️ Day</button>
+      <button class="dept-btn" data-shift="Night" onclick="selectShift('Night')">🌙 Night</button>
+    </div>
+  </div>
+
+  <div class="setup-actions">
+    <button id="openChecklistBtn" class="primary hidden" onclick="openChecklist()">Open Checklist</button>
+  </div>
+</div>
+
+<div id="appContent" class="hidden">
 <div class="tabs" id="tabs"></div>
 <div class="card">
   <div style="display:flex;justify-content:space-between;gap:10px"><b id="sectionTitle"></b><span class="small" id="count"></span></div>
@@ -49,6 +81,7 @@ dialog{border:0;border-radius:16px;max-width:560px;width:92%;padding:0;box-shado
 <div class="card">
   <b>Checklist settings</b><p class="small">Add, edit, delete or reorder your own checks. Changes are saved on this device.</p>
   <div class="actions"><button class="primary" onclick="openManager()">Edit Checklist</button><button class="secondary" onclick="newShift()">Start New Shift</button><button class="danger" onclick="clearCurrent()">Clear Current Shift</button></div>
+</div>
 </div>
 </main>
 
@@ -73,8 +106,42 @@ let data=JSON.parse(localStorage.getItem("shiftChecklistData")||"null")||Object.
 let state=JSON.parse(localStorage.getItem("shiftState")||"null")||{};
 let active=localStorage.getItem("activeSection")||"START SHIFT";
 let notes=localStorage.getItem("shiftNotes")||"";
+let operator=localStorage.getItem("shiftOperator")||"";
+let department=localStorage.getItem("shiftDepartment")||"";
+let shift=localStorage.getItem("shiftType")||"";
+
 document.getElementById("notes").value=notes;
 document.getElementById("dateLine").textContent=new Date().toLocaleString(undefined,{weekday:"long",day:"numeric",month:"long",year:"numeric",hour:"numeric",minute:"2-digit"});
+
+
+function updateSetup(){
+  const name=document.getElementById("operatorInput").value.trim();
+  document.getElementById("departmentStep").classList.toggle("hidden",!name);
+  document.querySelectorAll(".dept-btn[data-dept]").forEach(b=>b.classList.toggle("selected",b.dataset.dept===department));
+  document.getElementById("shiftStep").classList.toggle("hidden",!department);
+  document.querySelectorAll(".dept-btn[data-shift]").forEach(b=>b.classList.toggle("selected",b.dataset.shift===shift));
+  document.getElementById("openChecklistBtn").classList.toggle("hidden",!(name&&department&&shift));
+}
+function selectDepartment(v){department=v;localStorage.setItem("shiftDepartment",v);updateSetup()}
+function selectShift(v){shift=v;localStorage.setItem("shiftType",v);updateSetup()}
+function openChecklist(){
+  operator=document.getElementById("operatorInput").value.trim();
+  if(!operator||!department||!shift){alert("Please enter your name, choose a department and select Day/Night.");return}
+  localStorage.setItem("shiftOperator",operator);
+  localStorage.setItem("shiftDepartment",department);
+  localStorage.setItem("shiftType",shift);
+  document.getElementById("setupScreen").classList.add("hidden");
+  document.getElementById("appContent").classList.remove("hidden");
+  document.getElementById("dateLine").textContent=`${department} • ${shift} Shift • ${operator} • `+
+    new Date().toLocaleString(undefined,{weekday:"long",day:"numeric",month:"long",year:"numeric",hour:"numeric",minute:"2-digit"});
+  render();
+}
+function showSetup(){
+  document.getElementById("setupScreen").classList.remove("hidden");
+  document.getElementById("appContent").classList.add("hidden");
+  document.getElementById("operatorInput").value=operator;
+  updateSetup();
+}
 
 function save(){localStorage.setItem("shiftChecklistData",JSON.stringify(data));localStorage.setItem("shiftState",JSON.stringify(state));localStorage.setItem("activeSection",active)}
 function renderTabs(){tabs.innerHTML=Object.keys(data).map(k=>`<button class="tab ${k===active?'active':''}" onclick="active='${k}';save();render()">${k}</button>`).join("")}
@@ -137,9 +204,18 @@ function completeShift(){
    if(st.status==="FAIL"&&!st.comment?.trim())missing.push(sec+": "+x.text+" — FAIL comment required");
  }));
  if(missing.length){alert("Some required checks are incomplete:\n\n"+missing.slice(0,8).join("\n")+(missing.length>8?"\n...":""));return}
- alert("Shift completed. Handover notes have been saved.");localStorage.setItem("lastCompleted",new Date().toISOString());localStorage.setItem("lastSummary",getSummaryText());
+ const completedAt=new Date().toISOString();
+  const history=JSON.parse(localStorage.getItem("shiftHistory")||"[]");
+  history.unshift({operator,department,shift,completedAt,summary:getSummaryText()});
+  localStorage.setItem("shiftHistory",JSON.stringify(history.slice(0,100)));
+  alert("Shift completed. Handover notes have been saved.");localStorage.setItem("lastCompleted",completedAt);localStorage.setItem("lastSummary",getSummaryText());
 }
-function newShift(){if(confirm("Start a new shift? Current checklist ticks will be cleared.")){state={};notes="";document.getElementById("notes").value="";localStorage.removeItem("shiftNotes");save();render()}}
+function newShift(){if(confirm("Start a new shift? Current checklist ticks will be cleared.")){
+  state={};notes="";shift="";department="";
+  document.getElementById("notes").value="";
+  localStorage.removeItem("shiftNotes");localStorage.removeItem("shiftType");localStorage.removeItem("shiftDepartment");
+  save();showSetup();
+}}
 function clearCurrent(){if(confirm("Clear all checklist ticks for the current shift?")){state={};save();render()}}
 function openManager(){renderManager();manager.showModal()}
 function renderManager(){
@@ -153,6 +229,7 @@ function esc(s){return s.replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt
 function getSummaryText(){
   const lines=[];
   lines.push("SHIFT HANDOVER / SUMMARY");
+  lines.push(`Operator: ${operator||"Not set"} | Department: ${department||"Not set"} | Shift: ${shift||"Not set"}`);
   lines.push(new Date().toLocaleString());
   lines.push("");
   let fail=0, incomplete=0, na=0, pass=0;
@@ -180,7 +257,13 @@ function copySummary(){
   const text=getSummaryText();
   navigator.clipboard?.writeText(text).then(()=>alert("Shift summary copied."),()=>alert("Copy failed. Generate Summary and copy the text manually."));
 }
-render();
+document.getElementById("operatorInput").addEventListener("input",updateSetup);
+if(operator&&department&&shift){
+  document.getElementById("operatorInput").value=operator;
+  openChecklist();
+}else{
+  showSetup();
+}
 if("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(()=>{});
 </script>
 </body>
